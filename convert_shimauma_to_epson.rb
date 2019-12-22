@@ -2,73 +2,89 @@
 
 require 'csv'
 
-# CSV header for EPSON Photo+
-@out_header = %w(
-  氏名
-  敬称
-  郵便番号
-  住所１
-  住所２
-  連名１
-  敬称１
-  連名２
-  敬称２
-  連名３
-  敬称３
-  連名４
-  敬称４
-  連名５
-  敬称５
-)
+class AddressData
+  # CSV header for EPSON Photo+
+  @epson_address_header = %w(
+    氏名
+    敬称
+    郵便番号
+    住所１
+    住所２
+    連名１
+    敬称１
+    連名２
+    敬称２
+    連名３
+    敬称３
+    連名４
+    敬称４
+    連名５
+    敬称５
+  )
 
-# CSV header definition of Shimauma Print
-@in_header = {
-  family_name:        3,
-  first_name:         4,
-  title:              11,
-  post_code:          12,
-  prefecture:         13,
-  address1:           14,
-  address2:           15,
-  address3:           16,
-  joint_family_name1: 17,
-  joint_first_name1:  18,
-  title1:             19,
-  joint_family_name2: 20,
-  joint_first_name2:  21,
-  title2:             22,
-  joint_family_name3: 23,
-  joint_first_name3:  24,
-  title3:             25,
-  joint_family_name4: 26,
-  joint_first_name4:  27,
-  title4:             28,
-  joint_family_name5: 29,
-  joint_first_name5:  30,
-  title5:             31
-}
+  # CSV header definition of Shimauma Print
+  @shimauma_address_header = {
+    family_name:        3,
+    first_name:         4,
+    title:              11,
+    post_code:          12,
+    prefecture:         13,
+    address1:           14,
+    address2:           15,
+    address3:           16,
+    joint_family_name1: 17,
+    joint_first_name1:  18,
+    title1:             19,
+    joint_family_name2: 20,
+    joint_first_name2:  21,
+    title2:             22,
+    joint_family_name3: 23,
+    joint_first_name3:  24,
+    title3:             25,
+    joint_family_name4: 26,
+    joint_first_name4:  27,
+    title4:             28,
+    joint_family_name5: 29,
+    joint_first_name5:  30,
+    title5:             31
+  }
 
-def attr(csv_row, attr_name)
-  return csv_row[@in_header[attr_name.to_sym]] || ''
-end
+  class << self
+    attr_accessor :epson_address_header, :shimauma_address_header
+  end
 
-def validate_row(csv_row)
-  # '住所１' and '住所２' must be up to 30 characters
-  r = csv_row
-  address1 = generate_address1(r)
-  address2 = generate_address2(r)
+  attr_accessor :csv_row
 
-  raise "#{address1} has more than 30 chars." if address1.length > 30
-  raise "#{address2} has more than 30 chars." if address2.length > 30
-end
+  # @input csv_row CSV::Row
+  def initialize(csv_row)
+    @csv_row = csv_row
+  end
 
-def generate_address1(csv_row)
-  r = csv_row
-  return "#{attr(r, :prefecture)} #{attr(r, :address1)} #{attr(r, :address2)}"
-end
+  def validate
+    # '住所１' and '住所２' must be up to 30 characters
+    raise "#{address1} has more than 30 chars." if address1.length > 30
+    raise "#{address2} has more than 30 chars." if address2.length > 30
+  end
 
-def generate_address2(csv_row)
-  return attr(csv_row, :address3)
+  def name;      "#{_attr(:family_name)} #{_attr(:first_name)}";                   end
+  def title;     _attr(:title);                                                    end
+  def post_code; _attr(:post_code);                                                end
+  def address1;  "#{_attr(:prefecture)} #{_attr(:address1)} #{_attr(:address2)}";  end
+  def address2;  _attr(:address3);                                                 end
+  def joint_name(index)
+    family_name = "joint_family_name#{index}".to_sym
+    first_name  = "joint_first_name#{index}".to_sym
+    "#{_attr(family_name)} #{_attr(first_name)}"
+  end
+  def joint_name_title(index)
+    _attr("title#{index}".to_sym)
+  end
+
+  private
+
+  def _attr(attr_name)
+    return csv_row[AddressData.shimauma_address_header[attr_name.to_sym]] || ''
+  end
 end
 
 def main
@@ -85,24 +101,22 @@ def main
   end
 
   CSV.open('output.csv', 'w') do |out|
-    out << @out_header
+    out << AddressData.epson_address_header
 
     CSV.foreach(input_file, headers: true) do |r|
-      validate_row(r)
+      data = AddressData.new(r)
+      data.validate
+
       out_row = []
-      out_row << "#{attr(r, :family_name)} #{attr(r, :first_name)}"
-      out_row << attr(r, :title)
-      out_row << attr(r, :post_code)
-      out_row << generate_address1(r)
-      out_row << generate_address2(r)
+      out_row << data.name
+      out_row << data.title
+      out_row << data.post_code
+      out_row << data.address1
+      out_row << data.address2
 
       5.times do |i|
-        family_name = "joint_family_name#{i+1}".to_sym
-        first_name  = "joint_first_name#{i+1}".to_sym
-        title = "title#{i+1}".to_sym
-
-        out_row << "#{attr(r, family_name)} #{attr(r, first_name)}"
-        out_row << attr(r, title)
+        out_row << data.joint_name(i+1)
+        out_row << data.joint_name_title(i+1)
       end
 
       out << out_row.map{|r| r&.strip!;  r == "" ? nil : r }
