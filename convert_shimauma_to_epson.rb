@@ -40,13 +40,7 @@ class AddressData
     title2:             22,
     joint_family_name3: 23,
     joint_first_name3:  24,
-    title3:             25,
-    joint_family_name4: 26,
-    joint_first_name4:  27,
-    title4:             28,
-    joint_family_name5: 29,
-    joint_first_name5:  30,
-    title5:             31
+    title3:             25
   }
 
   class << self
@@ -114,7 +108,7 @@ def main
       out_row << data.address1
       out_row << data.address2
 
-      5.times do |i|
+      3.times do |i|
         out_row << data.joint_name(i+1)
         out_row << data.joint_name_title(i+1)
       end
