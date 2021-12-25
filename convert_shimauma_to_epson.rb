@@ -52,6 +52,7 @@ class AddressData
   # @input csv_row CSV::Row
   def initialize(csv_row)
     @csv_row = csv_row
+    validate
   end
 
   def validate
@@ -99,7 +100,6 @@ def main
 
     CSV.foreach(input_file, headers: true) do |r|
       data = AddressData.new(r)
-      data.validate
 
       out_row = []
       out_row << data.name
